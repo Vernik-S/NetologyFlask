@@ -78,9 +78,11 @@ class CreateAdvSchema(pydantic.BaseModel):
     owner: str
 
     @pydantic.validator("title")
-    def long_title(cls, value):
+    def check_title(cls, value):
         if len(value) <= 10:
             raise ValueError("title is too short")
+        elif len(value) > 50:
+            raise ValueError("title is too long")
         return value
 
 
@@ -91,9 +93,12 @@ class UpdateAdvSchema(pydantic.BaseModel):
     # owner: Optional[str] #При патче владельца менять нельзя. Таким образом, owner в validated_data не будет
 
     @pydantic.validator("title")
-    def long_title(cls, value):
+    def check_title(cls, value):
         if len(value) <= 10:
             raise ValueError("title is too short")
+        elif len(value) > 50:
+            raise ValueError("title is too long")
+
         return value
 
 
