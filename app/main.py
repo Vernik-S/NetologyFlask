@@ -3,11 +3,17 @@ from typing import Union, Optional
 
 from flask import Flask, jsonify, request
 from flask.views import MethodView
-from sqlalchemy import Column, Integer, String, DateTime, func, create_engine, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, func, create_engine, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import sessionmaker
 import pydantic
+import base64
+from datetime import datetime, timedelta
+import os
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_httpauth import HTTPBasicAuth
+from flask import g
 
 DSN = "postgresql://app:1234@127.0.0.1:5431/netology_flask"
 
@@ -25,9 +31,81 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     nickname = Column(String(50), unique=True, nullable=False)
     email = Column(String(50), unique=True, nullable=False)
-    password = Column(String, nullable=False)
+    password_hash = Column(String(128))
+    # password = Column(String(128))
+    is_admin = Column(String, nullable=False, default=False)
+
+    token = Column(String(32), index=True, unique=True)
+    token_expiration = Column(DateTime)
 
     advs = relationship("Adv", backref='owner')
+
+    def get_token(self, session, expires_in=3600, ):
+        now = datetime.utcnow()
+        if self.token and self.token_expiration > now + timedelta(seconds=60):
+            return self.token
+        self.token = base64.b64encode(os.urandom(24)).decode('utf-8')
+        self.token_expiration = now + timedelta(seconds=expires_in)
+        session.add(self)
+
+        return self.token
+
+    def revoke_token(self):
+        self.token_expiration = datetime.utcnow() - timedelta(seconds=1)
+
+    @staticmethod
+    def check_token(token):
+        user = User.query.filter_by(token=token).first()
+        if user is None or user.token_expiration < datetime.utcnow():
+            return None
+        return user
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
+basic_auth = HTTPBasicAuth()
+
+
+#     with Session() as session:
+#         test_user1 = User(nickname="TestUser1", email="a1@a.a", password_hash=generate_password_hash("1234"))
+#         test_user2 = User(nickname="TestUsr2", email="a2@a.a", password_hash=generate_password_hash("5678"))
+#         test_admin = User(nickname="TestAdmin", email="a3@a.a", password_hash=generate_password_hash("0007"), is_admin=True)
+#         session.add_all([test_user1, test_user2, test_admin])
+#         session.commit()
+
+
+@basic_auth.verify_password
+def verify_password(username, password):
+    print("verify")
+    with Session() as session:
+        # user = User.query.filter_by(username=username).first()
+        print(username, password)
+        user = session.query(User).filter(User.nickname == username).first()
+        print(user)
+        if user is None:
+            return False
+        g.current_user = user
+        return user.check_password(password)
+
+
+@basic_auth.login_required
+def get_token():
+    #print("get_token")
+    with Session() as session:
+        token = g.current_user.get_token(session)
+        session.commit()
+    return jsonify({'token': token})
+
+
+@basic_auth.error_handler
+def basic_auth_error():
+    # return error_response(401)
+    #print("basic_error")
+    raise HTTPError(401, f"Access denied")
 
 
 class Adv(Base):
@@ -157,6 +235,20 @@ class AdvView(MethodView):
         return jsonify(f"Adv wit id {adv_id} deleted")
 
 
+@app.route('/users/', methods=['POST'])
+def new_user():
+    with Session() as session:
+        data = request.json
+        password = data.pop("password")
+        new_user = User(**data)
+        new_user.set_password(password )
+        session.add(new_user)
+        session.commit()
+
+        return jsonify({"status": "success", "hash": new_user.password_hash})
+
+
+
 # def test():
 #     data = request.json
 #     headers = request.headers
@@ -167,6 +259,17 @@ class AdvView(MethodView):
 
 # app.add_url_rule("/test/", view_func=test)
 
+
 app.add_url_rule("/advs/", methods=["POST"], view_func=AdvView.as_view("create_adv"))
 app.add_url_rule("/advs/<int:adv_id>", methods=["GET", "PATCH", "DELETE"], view_func=AdvView.as_view("get_adv"))
+app.add_url_rule("/tokens/", methods=["POST"], view_func=get_token)
+
 app.run(debug=True)
+
+# if __name__ == "__main__":
+#     with Session() as session:
+#         test_user1 = User(nickname="TestUser1", email="a1@a.a", password_hash=generate_password_hash("1234"))
+#         test_user2 = User(nickname="TestUsr2", email="a2@a.a", password_hash=generate_password_hash("5678"))
+#         test_admin = User(nickname="TestAdmin", email="a3@a.a", password_hash=generate_password_hash("0007"), is_admin=True)
+#         session.add_all([test_user1, test_user2, test_admin])
+#         session.commit()
