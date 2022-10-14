@@ -43,8 +43,20 @@ admin1_token = response.json()["token"]
 
 
 
-response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},)
+#response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},)
 
+response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},
+                         headers={"token": user1_token})
+
+print(response.text)
+
+response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},
+                         headers={"token": user2_token})
+
+print(response.text)
+
+response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},
+                         headers={"token": admin1_token })
 
 print(response.status_code)
 print(response.text)

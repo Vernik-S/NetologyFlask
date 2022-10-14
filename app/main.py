@@ -80,12 +80,12 @@ basic_auth = HTTPBasicAuth()
 
 @basic_auth.verify_password
 def verify_password(username, password):
-    print("verify")
+    # print("verify")
     with Session() as session:
         # user = User.query.filter_by(username=username).first()
-        print(username, password)
+        # print(username, password)
         user = session.query(User).filter(User.nickname == username).first()
-        print(user)
+        # print(user)
         if user is None:
             return False
         g.current_user = user
@@ -94,7 +94,7 @@ def verify_password(username, password):
 
 @basic_auth.login_required
 def get_token():
-    #print("get_token")
+    # print("get_token")
     with Session() as session:
         token = g.current_user.get_token(session)
         session.commit()
@@ -104,7 +104,7 @@ def get_token():
 @basic_auth.error_handler
 def basic_auth_error():
     # return error_response(401)
-    #print("basic_error")
+    # print("basic_error")
     raise HTTPError(401, f"Access denied")
 
 
@@ -135,6 +135,14 @@ def handle_invalid_usage(error):
     return response
 
 
+# убрать дублирование get?
+def get_adv(adv_id: int, session: Session) -> Adv:
+    adv = session.query(Adv).get(adv_id)
+    if adv is None:
+        raise HTTPError(400, f"adv_id {adv_id} not found ")
+    return adv
+
+
 def get_user(user_name: str, session: Session) -> User:
     user = session.query(User).filter(User.nickname == user_name).first()
     if user is None:
@@ -142,12 +150,19 @@ def get_user(user_name: str, session: Session) -> User:
     return user
 
 
-# убрать дублирование get?
-def get_adv(adv_id: int, session: Session) -> Adv:
-    adv = session.query(Adv).get(adv_id)
-    if adv is None:
-        raise HTTPError(400, f"adv_id {adv_id} not found ")
-    return adv
+def get_user_by_token(token: str, session: Session) -> User:
+    user = session.query(User).filter(User.token == token).first()
+    if user is None:
+        raise HTTPError(401, f"Token not found")
+    # print(token, user.nickname)
+    return user
+
+
+def access_granted(owner: User, token: String, session: Session) -> Boolean:
+    token_user = get_user_by_token(token, session)
+    if token_user.is_admin == "true" or token_user == owner:
+        return True
+    raise HTTPError(401, f"Wrong token for user {owner.nickname}")
 
 
 class CreateAdvSchema(pydantic.BaseModel):
@@ -206,12 +221,15 @@ class AdvView(MethodView):
         with Session() as session:
             user_name = json_data_validated.pop("owner")
             user = get_user(user_name, session)
-            json_data_validated["owner_id"] = user.id
-            new_adv = Adv(**json_data_validated)
-            session.add(new_adv)
-            session.commit()
+            token = request.headers["token"]
+            print(user.nickname, token)
+            if access_granted(user, token, session):
+                json_data_validated["owner_id"] = user.id
+                new_adv = Adv(**json_data_validated)
+                session.add(new_adv)
+                session.commit()
 
-            return jsonify({"status": "success", "id": new_adv.id})
+                return jsonify({"status": "success", "id": new_adv.id})
 
     def patch(self, adv_id: int):
         json_data_validated = validate(UpdateAdvSchema, request.json)
@@ -241,12 +259,11 @@ def new_user():
         data = request.json
         password = data.pop("password")
         new_user = User(**data)
-        new_user.set_password(password )
+        new_user.set_password(password)
         session.add(new_user)
         session.commit()
 
         return jsonify({"status": "success", "hash": new_user.password_hash})
-
 
 
 # def test():
