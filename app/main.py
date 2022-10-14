@@ -221,8 +221,8 @@ class AdvView(MethodView):
         with Session() as session:
             user_name = json_data_validated.pop("owner")
             user = get_user(user_name, session)
-            token = request.headers["token"]
-            print(user.nickname, token)
+            token = request.headers.get("token")
+
             if access_granted(user, token, session):
                 json_data_validated["owner_id"] = user.id
                 new_adv = Adv(**json_data_validated)
@@ -235,20 +235,30 @@ class AdvView(MethodView):
         json_data_validated = validate(UpdateAdvSchema, request.json)
         with Session() as session:
             adv = get_adv(adv_id, session)
+            owner = session.query(User).get(adv.owner_id)
+            token = request.headers.get("token")
 
-            for key, value in json_data_validated.items():
-                setattr(adv, key, value)
-            session.add(adv)
-            session.commit()
+            if access_granted(owner, token, session):
 
-            return jsonify(
-                {"title": adv.title, "description": adv.desc})
+                for key, value in json_data_validated.items():
+                    setattr(adv, key, value)
+                session.add(adv)
+                session.commit()
+
+                return jsonify(
+                    {"title": adv.title, "description": adv.desc})
 
     def delete(self, adv_id: int):
         with Session() as session:
             adv = get_adv(adv_id, session)
-            session.delete(adv)
-            session.commit()
+            owner = session.query(User).get(adv.owner_id)
+            token = request.headers.get("token")
+
+            if access_granted(owner, token, session):
+
+
+                session.delete(adv)
+                session.commit()
 
         return jsonify(f"Adv wit id {adv_id} deleted")
 

@@ -41,22 +41,34 @@ session.auth = ("test_admin1", "007")
 response = session.post("http://127.0.0.1:5000/tokens/")
 admin1_token = response.json()["token"]
 
+session.close()
 
 
-#response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},)
 
-response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},
-                         headers={"token": user1_token})
 
-print(response.text)
 
-response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},
-                         headers={"token": user2_token})
+# response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},
+#                          headers={"token": user1_token})
+#
+# print(response.text)
+#
+# response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},
+#                          headers={"token": user2_token})
+#
+# print(response.text)
+#
+# response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},
+#                          headers={"token": admin1_token })
 
-print(response.text)
+# response = requests.get("http://127.0.0.1:5000/advs/3")
+# print(response.text)
 
-response = requests.post("http://127.0.0.1:5000/advs/", json={"title": "test_title 1", "desc": "description", "owner":"test_user1"},
-                         headers={"token": admin1_token })
+#response = requests.delete("http://127.0.0.1:5000/advs/3", headers={"token": admin1_token })
+
+
+response = requests.patch("http://127.0.0.1:5000/advs/1", json={"desc": "description edited by admin",},
+                          headers={"token": admin1_token})
+
 
 print(response.status_code)
 print(response.text)
