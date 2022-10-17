@@ -15,13 +15,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_httpauth import HTTPBasicAuth
 from flask import g
 
-#DSN = "postgresql://app:1234@127.0.0.1:5431/netology_flask"
-DSN = os.getenv("PG_DSN", default="postgresql://app:1234@127.0.0.1:5431/netology_flask")
+#DSN = "postgresql://app:1234@127.0.0.1:5444/netology_flask"
+DSN = os.getenv("PG_DSN", default="postgresql://app:1234@127.0.0.1:5444/netology_flask")
 
 engine = create_engine(DSN)
 Session = sessionmaker(bind=engine)
 
-app = Flask("server")
+app = Flask("app")
 Base = declarative_base()
 atexit.register(lambda: engine.dispose())
 
@@ -292,7 +292,8 @@ app.add_url_rule("/advs/", methods=["POST"], view_func=AdvView.as_view("create_a
 app.add_url_rule("/advs/<int:adv_id>", methods=["GET", "PATCH", "DELETE"], view_func=AdvView.as_view("get_adv"))
 app.add_url_rule("/tokens/", methods=["POST"], view_func=get_token)
 
-app.run(debug=True)
+#app.run(debug=True)
+#app.run()
 
 # if __name__ == "__main__":
 #     with Session() as session:

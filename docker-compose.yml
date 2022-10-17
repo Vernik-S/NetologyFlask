@@ -10,7 +10,7 @@ services:
   db:
     image: postgres:14.3-alpine3.15
     ports:
-      - "5431:5432"
+      - "5444:5432"
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: 1234
@@ -25,7 +25,7 @@ services:
     build:
       context: .
     environment:
-      PG_DSN: postgresql://app:1234@127.0.0.1:5431/netology_flask
+      PG_DSN: postgresql://app:1234@db:5432/netology_flask
     ports:
       - "5000:5000"
     depends_on:
@@ -39,6 +39,6 @@ services:
     volumes:
       - ./app:/app
     working_dir: /app     
-    #entrypoint: sh ./run.sh  
-    entrypoint: python3 main.py
-
+    entrypoint: sh ./run.sh  
+    #entrypoint: python3 main.py
+    #entrypoint: PYTHONUNBUFFERED=TRUE gunicorn -b 0.0.0.0:5000 main:app --capture-output
