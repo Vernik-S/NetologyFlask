@@ -15,7 +15,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_httpauth import HTTPBasicAuth
 from flask import g
 
-DSN = "postgresql://app:1234@127.0.0.1:5431/netology_flask"
+#DSN = "postgresql://app:1234@127.0.0.1:5431/netology_flask"
+DSN = os.getenv("PG_DSN", default="postgresql://app:1234@127.0.0.1:5431/netology_flask")
 
 engine = create_engine(DSN)
 Session = sessionmaker(bind=engine)
